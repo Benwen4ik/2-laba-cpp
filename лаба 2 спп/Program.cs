@@ -56,24 +56,28 @@ namespace спп_2_лаба
                         Console.WriteLine("Ошибка объекта: " + exp.Message);
                         Console.ReadKey();
                         Console.Clear();
+                        connection.Close();
                     }
                     catch (OleDbException ex)
                     {
                         Console.WriteLine("Ошибка источника данных: " + ex.Message);
                         Console.ReadKey();
                         Console.Clear();
+                        connection.Close();
                     }
                     catch (FormatException e)
                     {
                         Console.WriteLine("Ошибка формата: " + e.Message);
                         Console.ReadKey();
                         Console.Clear();
+                        connection.Close();
                     }
                     catch (Exception er)
                     {
                         Console.WriteLine("Ошибка: " + er.Message);
                         Console.ReadKey();
                         Console.Clear();
+                        connection.Close();
                     }
                 }
             }
@@ -87,7 +91,7 @@ namespace спп_2_лаба
             Console.WriteLine("2) Insert");
             Console.WriteLine("3) Delete");
             Console.WriteLine("4) Update");
-            Console.WriteLine("5) Выйти");
+            Console.WriteLine("5) Выбрать таблицу");
             int a = Convert.ToInt32(Console.ReadLine());
             return a;
         }
@@ -156,36 +160,22 @@ namespace спп_2_лаба
                 return myDataset.Tables[tableName];
         }
 
-        static void SelectRowItems(DataTable myDataTable)
+        static void SelectRow(DataTable myDataTable)
         {
             if (myDataTable.Rows.Count == 0)
             {
                 Console.WriteLine("Ничего не найдено");
                 return;
             }
-
-            //
-            foreach(DataColumn dc in myDataTable.PrimaryKey)
-            {
-                int a = Columns.IndexOf(dc.ColumnName);
-                Columns.RemoveAt(a);
-                Columns.Insert(0, dc.ColumnName);
-            }
-            string dt;
             for (int i = 0; i < myDataTable.Columns.Count; i++)
-                if( myDataTable.Columns[i].ToString() == myDataTable.PrimaryKey.ToString() )
-                {
-                    dt = myDataTable.Columns[0].ColumnName;
-                    myDataTable.Columns[0].ColumnName = myDataTable.PrimaryKey.ToString();
-                    myDataTable.Columns[i].ColumnName = dt;
-
-                }
-            //
-            string shapka = " ";
-           for (int i=0; i< myDataTable.Columns.Count; i++)
-            shapka += myDataTable.Columns[i].ToString() + " \t|";
-            Console.WriteLine(shapka);
-            Console.WriteLine("----+------------------------+------------------------+----------------");
+            {
+                if (myDataTable.Columns[i].DataType.Name == "Int32")
+                    Console.Write("{0,-10}|", myDataTable.Columns[i].ToString());
+                else if (myDataTable.Columns[i].DataType.Name == "String")
+                    Console.Write("{0,-25}|", myDataTable.Columns[i].ToString());
+                else Console.Write("{0,-10}|", myDataTable.Columns[i].ToString());
+            }
+            Console.WriteLine("\n---------------------------------------------------------------------------");
             foreach (DataRow dr in myDataTable.Rows)
             {
                 //dr.
@@ -214,7 +204,7 @@ namespace спп_2_лаба
                     "SELECT " + getColumnsText() + 
                         "FROM " + table ;
         //    setPrimaryKey(connection, table);
-            SelectRowItems(createDataTable(table, myOleDbCommand));
+            SelectRow(createDataTable(table, myOleDbCommand));
         }
 
 
@@ -323,23 +313,6 @@ namespace спп_2_лаба
                     "SELECT " + getColumnsText() +
                         "FROM " + table;
             return createDataTable(table, myOleDbCommand);
-        }
-
-
-
-        static void getTables(OleDbConnection connection)
-        {
-            DataTable dt = connection.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, new object[] { null, null, null, "TABLE" });
-            foreach (DataRow item in dt.Rows)
-            {
-                Console.WriteLine((string)item["TABLE_NAME"]);
-                DataTable schemaTable = connection.GetOleDbSchemaTable(OleDbSchemaGuid.Columns,
-                 new object[] { null, null, item["TABLE_NAME"], null });
-                foreach (DataRow column in schemaTable.Rows)
-                {
-                    Console.WriteLine((string)column["COLUMN_NAME"]);
-                }
-            }
         }
 
         static void setTables(OleDbConnection connection)

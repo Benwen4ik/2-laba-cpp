@@ -19,8 +19,8 @@ namespace спп_2_лаба
 
         static void Main(string[] args)
         {
-            string connectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=D:\\учеба\\6 сем\\ЭРУД ССП\\Database.accdb;";
-
+               string connectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=D:\\учеба\\6 сем\\ЭРУД ССП\\Database.accdb;";
+           // string connectionString = "Provider=Microsoft.ACE.OLEDB.12.0;";
             using (OleDbConnection connection = new OleDbConnection(connectionString))
             {
                 bool bl = true ;
@@ -118,16 +118,16 @@ namespace спп_2_лаба
                     case 3:
                         {
                             Console.Clear();
-                            Console.WriteLine("Vedite id");
-                            int id = Convert.ToInt32(Console.ReadLine());
+                            Console.WriteLine("Введите первый ключ");
+                            string id = Console.ReadLine();
                             Delete(connection, tablename, id);
                             break;
                         }
                     case 4:
                         {
                             Console.Clear();
-                            Console.WriteLine("Vedite id");
-                            int id = Convert.ToInt32(Console.ReadLine());
+                            Console.WriteLine("Введите первый ключ");
+                            string id = Console.ReadLine();
                             Update(connection, tablename, id);
                             break;
                         }
@@ -160,13 +160,14 @@ namespace спп_2_лаба
                 return myDataset.Tables[tableName];
         }
 
-        static void SelectRow(DataTable myDataTable)
+        static void SelectRow(DataTable myDataTable, OleDbConnection connection)
         {
             if (myDataTable.Rows.Count == 0)
             {
-                Console.WriteLine("Ничего не найдено");
+                Console.WriteLine("Таблица не имеет строк");
                 return;
             }
+            /*
             for (int i = 0; i < myDataTable.Columns.Count; i++)
             {
                 if (myDataTable.Columns[i].DataType.Name == "Int32")
@@ -175,18 +176,42 @@ namespace спп_2_лаба
                     Console.Write("{0,-25}|", myDataTable.Columns[i].ToString());
                 else Console.Write("{0,-10}|", myDataTable.Columns[i].ToString());
             }
+            */
+            setColumns(connection, myDataTable.TableName);
+            setPrimaryKey(connection, myDataTable);
+          //  Console.Write("{0,-7} PK |", PrimaryKey);
+            for (int i=0; i< myDataTable.Columns.Count; i++)
+            {
+                if (myDataTable.Columns[i].ToString() != PrimaryKey)
+                {
+                    if (myDataTable.Columns[i].DataType.Name == "Int32")
+                        Console.Write("{0,-11}|", myDataTable.Columns[i].ToString());
+                    else if (myDataTable.Columns[i].DataType.Name == "String")
+                        Console.Write("{0,-25}|", myDataTable.Columns[i].ToString());
+                    else Console.Write("{0,-11}|", myDataTable.Columns[i].ToString());
+                } else
+                {
+                    if (myDataTable.Columns[i].DataType.Name == "Int32")
+                        Console.Write("{0,-5} (PK) |", myDataTable.Columns[i].ToString());
+                    else if (myDataTable.Columns[i].DataType.Name == "String")
+                        Console.Write("{0,-20} (PK) |", myDataTable.Columns[i].ToString());
+                    else Console.Write("{0,-5} (PK) |", myDataTable.Columns[i].ToString());
+                }
+            }
+            //
             Console.WriteLine("\n---------------------------------------------------------------------------");
             foreach (DataRow dr in myDataTable.Rows)
             {
                 //dr.
                 //  List<string> row = dr.ItemArray.ToList<string[]>();
+                 
                 for (int i=0; i< dr.Table.Columns.Count; i++)
                 {
                   if (dr[i].GetType().Name == "Int32") 
-                    Console.Write("{0,-10}|", dr[i]) ;
+                    Console.Write("{0,-11}|", dr[i]) ;
                   else if (dr[i].GetType().Name == "String")
                     Console.Write("{0,-25}|", dr[i]);
-                  else Console.Write("{0,-10}|", dr[i]);
+                  else Console.Write("{0,-11}|", dr[i]);
                 }
                 Console.Write("\n");
                 //   Console.WriteLine("{0,-4}|{1,-24}|{2,-24}|{3,-17}", dr[0], dr[1], dr[2], dr[3]);
@@ -204,7 +229,7 @@ namespace спп_2_лаба
                     "SELECT " + getColumnsText() + 
                         "FROM " + table ;
         //    setPrimaryKey(connection, table);
-            SelectRow(createDataTable(table, myOleDbCommand));
+            SelectRow(createDataTable(table, myOleDbCommand),connection);
         }
 
 
@@ -246,11 +271,11 @@ namespace спп_2_лаба
             Console.WriteLine("Данные успешно добавлены в " + table);
         }
 
-        static void Update(OleDbConnection connection, string table, int id)
+        static void Update(OleDbConnection connection, string table, string id)
         {
             if (SearchById(connection, table, id).Rows.Count == 0)
             {
-                Console.WriteLine("Ошибка. Строки с id=" + id + " не найдено");
+                Console.WriteLine("Ошибка. Строки с первичным ключом =" + id + " не найдено");
                 return;
             }
             setColumns(connection, table);
@@ -276,31 +301,32 @@ namespace спп_2_лаба
                 myOleDbCommand.Parameters.AddWithValue("@param" + i, param[i]);
             }
             myOleDbCommand.CommandText = "UPDATE " + table + " SET " + str 
-                + " WHERE " + PrimaryKey + "=" + id;
+                + " WHERE [" + PrimaryKey + "]=" + id;
             myOleDbCommand.ExecuteNonQuery();
             Console.WriteLine("Данные изменены");
         }
 
-        static void Delete(OleDbConnection connection,string table, int id)
+        static void Delete(OleDbConnection connection,string table, string id)
         {
             if (SearchById(connection,table, id).Rows.Count == 0)
             {
-                Console.WriteLine("Ошибка. Строки с id=" + id + " не найдено");
+                Console.WriteLine("Ошибка. Строки с первичным ключом =" + id + " не найдено");
                 return;
             }
             OleDbCommand myOleDbCommand = connection.CreateCommand();
-            myOleDbCommand.CommandText = "DELETE FROM " + table + " WHERE " + PrimaryKey + "=" + id;
+            myOleDbCommand.CommandText = "DELETE CASCADE FROM " + table + " WHERE [" + PrimaryKey + "]=" + id;
             myOleDbCommand.ExecuteNonQuery();
             Console.WriteLine("Строка успешно удалена");
         }
 
-        static DataTable SearchById(OleDbConnection connection,string table, int id)
+        static DataTable SearchById(OleDbConnection connection,string table, string id)
         {
             setColumns(connection, table);
+            setPrimaryKey(connection, GetDataTable(connection, table));
             OleDbCommand myOleDbCommand = connection.CreateCommand();
             myOleDbCommand.CommandText =
                     "SELECT " + getColumnsText() +
-                        "FROM " + table + " WHERE " +PrimaryKey + "=" + id;
+                        "FROM " + table + " WHERE [" +PrimaryKey + "]=" + id ;
             return createDataTable(table, myOleDbCommand);
         }
 

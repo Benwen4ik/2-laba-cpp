@@ -43,6 +43,8 @@ namespace спп_2_лаба
                         if (a < 1 || a > Tables.Count + 1)
                         {
                             Console.WriteLine("Ошибка выбора таблицы");
+                            Console.ReadKey();
+                            Console.Clear();
                         }
                         else
                         {
@@ -278,32 +280,66 @@ namespace спп_2_лаба
                 Console.WriteLine("Ошибка. Строки с первичным ключом =" + id + " не найдено");
                 return;
             }
+            //
+            string column = "";
+            bool bl = true;
             setColumns(connection, table);
             setPrimaryKey(connection, GetDataTable(connection, table));
-            if (Columns.Count == 0)
+            while (bl)
             {
-                Console.WriteLine("Ошибка. Отсуствуют столбцы кроме первичного");
-                return;
-            }
-            string[] param = new string[Columns.Count];
-            for (int i = 0; i < Columns.Count; i++)
-            {
+                Console.WriteLine("Выберете столбец для работы");
+                for (int i = 0; i < Columns.Count; i++)
+                {
+                    Console.WriteLine((i + 1) + ")" + Columns[i]);
+                }
+                Console.WriteLine((Columns.Count + 1) + ")Выход");
+                int a = Convert.ToInt32(Console.ReadLine());
+                if (a == Columns.Count + 1) { bl = false; return; }
+                if (a < 1 || a > Tables.Count + 1)
+                {
+                    Console.WriteLine("Ошибка выбора таблицы");
+                }
+                else
+                {
+                    column = Columns[a - 1];
+                }
 
-                Console.WriteLine("Введите " + Columns[i]);
-                param[i] = Console.ReadLine();
+                //
+                //setColumns(connection, table);
+                //setPrimaryKey(connection, GetDataTable(connection, table));
+                /*if (Columns.Count == 0)
+                {
+                    Console.WriteLine("Ошибка. Отсуствуют столбцы кроме первичного");
+                    return;
+                }
+                string[] param = new string[Columns.Count];
+                for (int i = 0; i < Columns.Count; i++)
+                {
+
+                    Console.WriteLine("Введите " + Columns[i]);
+                    param[i] = Console.ReadLine();
+                }
+                string str = "";
+                */
+                OleDbCommand myOleDbCommand = connection.CreateCommand();
+                /*for (int i = 0; i < param.Length; i++)
+                {
+                    if (i == param.Length - 1) str += "[" + Columns[i] +  "]=@param" + i + " ";
+                    else str += "["  + Columns[i]  +"]=@param" + i + ", ";
+                    myOleDbCommand.Parameters.AddWithValue("@param" + i, param[i]);
+                } */
+                //
+                Console.WriteLine("Введите " + column);
+                string str = Console.ReadLine();
+                myOleDbCommand.Parameters.AddWithValue("@param", str);
+                //
+                myOleDbCommand.CommandText = "UPDATE " + table + " SET " + column + "=@param"
+                    + " WHERE [" + PrimaryKey + "]=" + id;
+                myOleDbCommand.ExecuteNonQuery();
+                Console.WriteLine("Данные изменены");
+                Console.ReadKey();
+                Console.Clear();
             }
-            string str = "";
-            OleDbCommand myOleDbCommand = connection.CreateCommand();
-            for (int i = 0; i < param.Length; i++)
-            {
-                if (i == param.Length - 1) str += "[" + Columns[i] +  "]=@param" + i + " ";
-                else str += "["  + Columns[i]  +"]=@param" + i + ", ";
-                myOleDbCommand.Parameters.AddWithValue("@param" + i, param[i]);
-            }
-            myOleDbCommand.CommandText = "UPDATE " + table + " SET " + str 
-                + " WHERE [" + PrimaryKey + "]=" + id;
-            myOleDbCommand.ExecuteNonQuery();
-            Console.WriteLine("Данные изменены");
         }
 
         static void Delete(OleDbConnection connection,string table, string id)

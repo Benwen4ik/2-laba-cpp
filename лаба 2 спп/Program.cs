@@ -15,11 +15,20 @@ namespace спп_2_лаба
 
         static List<string> Tables = new List<string> { };
         static List<string> Columns = new List<string> { };
+
+        struct ForeignKey
+        {
+            public string table;
+            public string column;
+
+        }
+        //static Dictionary<string, string> ForeignKeys = new Dictionary<string, string>();
+        static List<ForeignKey> listForeignKeys = new List<ForeignKey>();
         static string PrimaryKey = "";
 
         static void Main(string[] args)
         {
-               string connectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=D:\\учеба\\6 сем\\ЭРУД ССП\\Database.accdb;";
+               string connectionString = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=Database.accdb;";
            // string connectionString = "Provider=Microsoft.ACE.OLEDB.12.0;";
             using (OleDbConnection connection = new OleDbConnection(connectionString))
             {
@@ -120,7 +129,7 @@ namespace спп_2_лаба
                     case 3:
                         {
                             Console.Clear();
-                            Console.WriteLine("Введите первый ключ");
+                            Console.WriteLine("Введите первичный ключ");
                             string id = Console.ReadLine();
                             Delete(connection, tablename, id);
                             break;
@@ -128,7 +137,7 @@ namespace спп_2_лаба
                     case 4:
                         {
                             Console.Clear();
-                            Console.WriteLine("Введите первый ключ");
+                            Console.WriteLine("Введите первичный ключ");
                             string id = Console.ReadLine();
                             Update(connection, tablename, id);
                             break;
@@ -138,11 +147,16 @@ namespace спп_2_лаба
                             ex = false;
                             break;
                         }
+                    case 6:
+                        {
+                            setForeignKey(connection, tablename);
+                            break;
+                        }
                     default:
                         {
                             Console.WriteLine("Неккоректно выбрана функция");
-                            Console.ReadKey();
-                            Console.Clear();
+                            //Console.ReadKey();
+                           // Console.Clear();
                             break;
                         }
                 }
@@ -229,7 +243,7 @@ namespace спп_2_лаба
             OleDbCommand myOleDbCommand = connection.CreateCommand();
             myOleDbCommand.CommandText =
                     "SELECT " + getColumnsText() + 
-                        "FROM " + table ;
+                        "FROM [" + table + "]" ;
         //    setPrimaryKey(connection, table);
             SelectRow(createDataTable(table, myOleDbCommand),connection);
         }
@@ -267,7 +281,7 @@ namespace спп_2_лаба
                 myOleDbCommand.Parameters.AddWithValue("@param" + i, param[i]);
             }
             myOleDbCommand.CommandText =
-                    @" INSERT INTO " + table + "( " + getColumnsText() + " ) VALUES ( " +
+                    @" INSERT INTO [" + table + "] ( " + getColumnsText() + " ) VALUES ( " +
                     str + " ) ";
             myOleDbCommand.ExecuteNonQuery();
             Console.WriteLine("Данные успешно добавлены в " + table);
@@ -292,7 +306,7 @@ namespace спп_2_лаба
                 {
                     Console.WriteLine((i + 1) + ")" + Columns[i]);
                 }
-                Console.WriteLine((Columns.Count + 1) + ")Выход");
+                Console.WriteLine((Columns.Count + 1) + ") Назад к выбору функций");
                 int a = Convert.ToInt32(Console.ReadLine());
                 if (a == Columns.Count + 1) { bl = false; return; }
                 if (a < 1 || a > Tables.Count + 1)
@@ -333,7 +347,7 @@ namespace спп_2_лаба
                 string str = Console.ReadLine();
                 myOleDbCommand.Parameters.AddWithValue("@param", str);
                 //
-                myOleDbCommand.CommandText = "UPDATE " + table + " SET " + column + "=@param"
+                myOleDbCommand.CommandText = "UPDATE [" + table + "] SET [" + column + "]=@param"
                     + " WHERE [" + PrimaryKey + "]=" + id;
                 myOleDbCommand.ExecuteNonQuery();
                 Console.WriteLine("Данные изменены");
@@ -342,17 +356,47 @@ namespace спп_2_лаба
             }
         }
 
-        static void Delete(OleDbConnection connection,string table, string id)
+        static void Delete(OleDbConnection connection, string table, string id)
         {
-            if (SearchById(connection,table, id).Rows.Count == 0)
+            if (SearchById(connection, table, id).Rows.Count == 0)
             {
                 Console.WriteLine("Ошибка. Строки с первичным ключом =" + id + " не найдено");
                 return;
             }
+            setForeignKey(connection, table);
+            int a = 1;
+            if (listForeignKeys.Count != 0)
+            {
+                for (int i = 0; i < listForeignKeys.Count; i++) {
+                    if (SearchByColumn(connection, listForeignKeys[i].table ,listForeignKeys[i].column , id).Rows.Count !=0)
+                    {
+                        Console.WriteLine("У этого значения есть вторичный ключ. 1 - удалить все строки, 2 - не удалять");
+                        a = Convert.ToInt32(Console.ReadLine());
+                        if (a == 1)
+                        {
+                            DeleteFKTable(connection, listForeignKeys[i].table, listForeignKeys[i].column, id);
+                        }
+                    }
+                }
+            }
+            if (a == 2)
+            {
+                //Console.WriteLine("");
+                return;
+            }
+            if (a != 1 && a != 2 )
+            {
+
+                Console.WriteLine("Ошибка выбора. Введено неверное значение");
+               // Console.ReadKey();
+                return;
+            }
+            setColumns(connection, table);
+            setPrimaryKey(connection, GetDataTable(connection, table));
             OleDbCommand myOleDbCommand = connection.CreateCommand();
-            myOleDbCommand.CommandText = "DELETE CASCADE FROM " + table + " WHERE [" + PrimaryKey + "]=" + id;
+            myOleDbCommand.CommandText = "DELETE CASCADE FROM [" + table + "] WHERE [" + PrimaryKey + "]=" + id;
             myOleDbCommand.ExecuteNonQuery();
-            Console.WriteLine("Строка успешно удалена");
+            Console.WriteLine("Строки успешно удалены ");
         }
 
         static DataTable SearchById(OleDbConnection connection,string table, string id)
@@ -362,8 +406,26 @@ namespace спп_2_лаба
             OleDbCommand myOleDbCommand = connection.CreateCommand();
             myOleDbCommand.CommandText =
                     "SELECT " + getColumnsText() +
-                        "FROM " + table + " WHERE [" +PrimaryKey + "]=" + id ;
+                        "FROM [" + table + "] WHERE [" +PrimaryKey + "]=" + id ;
             return createDataTable(table, myOleDbCommand);
+        }
+
+        static DataTable SearchByColumn(OleDbConnection connection, string table, string column, string id)
+        {
+            setColumns(connection, table);
+            setPrimaryKey(connection, GetDataTable(connection, table));
+            OleDbCommand myOleDbCommand = connection.CreateCommand();
+            myOleDbCommand.CommandText =
+                    "SELECT " + column +
+                        " FROM [" + table + "] WHERE [" + column + "]=" + id;
+            return createDataTable(table, myOleDbCommand);
+        }
+
+        static void DeleteFKTable(OleDbConnection connection, string table, string column, string id)
+        {
+            OleDbCommand myOleDbCommand = connection.CreateCommand();
+            myOleDbCommand.CommandText = "DELETE FROM [" + table + "] WHERE [" + column + "]=" + id;
+            myOleDbCommand.ExecuteNonQuery();
         }
 
 
@@ -373,7 +435,7 @@ namespace спп_2_лаба
             OleDbCommand myOleDbCommand = connection.CreateCommand();
             myOleDbCommand.CommandText =
                     "SELECT " + getColumnsText() +
-                        "FROM " + table;
+                        "FROM [" + table + "]";
             return createDataTable(table, myOleDbCommand);
         }
 
@@ -397,6 +459,24 @@ namespace спп_2_лаба
                 Columns.Add((string)column["COLUMN_NAME"]);
             }
         }
+
+        static void setForeignKey(OleDbConnection connection, string table)
+        {
+            Columns.Clear();
+            DataTable schemaTable = connection.GetOleDbSchemaTable(OleDbSchemaGuid.Foreign_Keys,
+               new object[] { null, null, table, null });
+            foreach (DataRow column in schemaTable.Rows)
+            {
+                listForeignKeys.Clear();
+                ForeignKey foreignKey = new ForeignKey();
+                foreignKey.table = column["FK_TABLE_NAME"].ToString();
+                foreignKey.column = column["FK_COLUMN_NAME"].ToString();
+                //Columns.Add((string)column["COLUMN_NAME"]);
+                // Console.WriteLine(column["FK_COLUMN_NAME"]);
+                listForeignKeys.Add(foreignKey);
+            }
+        }
+
         static string getColumnsText()
         {
             string str = " ";
